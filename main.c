@@ -36,7 +36,6 @@ void display_temp(float temp) {
     int whole = (int)temp;
     int fraction = (int)((temp - whole) * 10);
     sprintf(buffer, "Temp: %d.%d C   ", whole, fraction);
-    lcd_set_cursor(0, 1); // 2行目
     lcd_putstr(buffer);
 }
 
@@ -46,7 +45,6 @@ void display_humidity(float humidity) {
     int whole = (int)humidity;
     int fraction = (int)((humidity - whole) * 10);
     sprintf(buffer, "Humi: %d.%d %%   ", whole, fraction);
-    lcd_set_cursor(0, 1); // 2行目
     lcd_putstr(buffer);
 }
 
@@ -73,22 +71,13 @@ int main(void) {
     uint8_t raw_sensor_data[7]; // 生の7バイトデータを格納
     
     while(1) {
-      lcd_set_cursor(0, 0);
-      lcd_putstr("Hatchery System"); // 1行目固定
-      lcd_set_cursor(0, 1);
-
       if (aht25_read_data(&temperature, &humidity, raw_sensor_data)) {
           // 温度を表示
+          lcd_set_cursor(0, 0); // 次の表示のためにカーソルをセット
           display_temp(temperature);
-          _delay_ms(2000); // 2秒間表示
-          lcd_set_cursor(0, 1); // 次の表示のためにカーソルをセット
-          lcd_putstr("                "); // 画面クリア
-          
           // 湿度を表示
-          display_humidity(humidity);
-          _delay_ms(2000); // 2秒間表示
           lcd_set_cursor(0, 1); // 次の表示のためにカーソルをセット
-          lcd_putstr("                "); // 画面クリア
+          display_humidity(humidity);
       } else {
           _delay_ms(1000); // 連続呼び出しによるセンサーのフリーズ防止
           // raw_sensor_dataの内容を16進数で表示
@@ -99,7 +88,7 @@ int main(void) {
           sprintf(error_buf, "%02X %02X %02X", raw_sensor_data[4], raw_sensor_data[5], raw_sensor_data[6]);
           lcd_set_cursor(0, 1);
           lcd_putstr(error_buf);
-          _delay_ms(2000); // エラーメッセージを2秒間表示
       }
+      _delay_ms(2000); // メッセージを2秒間表示
     }
 }

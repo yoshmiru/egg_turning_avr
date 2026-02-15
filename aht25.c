@@ -7,13 +7,6 @@
 // AHT25を初期化する
 bool aht25_init(void) {
     _delay_ms(150); // 電源投入後の安定待ち（メーカーコードの PowerOnTim 相当）
-    // 0x71コマンドを送る
-//    if (!i2c_start()) { i2c_stop(); return false; }
-//    if (!i2c_write(AHT25_ADDRESS << 1 | 0x00)) { i2c_stop(); return false; } // 書き込みアドレス
-//                                                                             // データシート7.4.1より、ステータスバイトは0x71コマンドで取得
-//    if (!i2c_write(0x71)) { i2c_stop(); return false; } // ステータス読み出しコマンド
-//    i2c_stop();
-//    _delay_us(75); // データシート記載の待機時間
     return true; // 何も送らずに「成功」としてメインループへ進む！
 }
 
