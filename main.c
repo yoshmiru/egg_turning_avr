@@ -27,7 +27,7 @@ void i2c_scan(void) {
         _delay_us(100); // 連続呼び出しによるセンサーのフリーズ防止
     }
     lcd_clear();
-    lcd_putstr("Scan Finished");
+    lcd_debug_message("Scan Finished");
 }
 
 // 温度表示関数
@@ -35,7 +35,7 @@ void display_temp(float temp) {
     char buffer[16];
     int whole = (int)temp;
     int fraction = (int)((temp - whole) * 10);
-    sprintf(buffer, "Temp: %d.%d C   ", whole, fraction);
+    sprintf(buffer, "T %d.%d C   ", whole, fraction);
     lcd_putstr(buffer);
 }
 
@@ -44,22 +44,18 @@ void display_humidity(float humidity) {
     char buffer[16];
     int whole = (int)humidity;
     int fraction = (int)((humidity - whole) * 10);
-    sprintf(buffer, "Humi: %d.%d %%   ", whole, fraction);
+    sprintf(buffer, "H %d.%d %%   ", whole, fraction);
     lcd_putstr(buffer);
 }
 
 int main(void) {
     lcd_init();
-        lcd_set_cursor(0, 0);
-        lcd_putstr("Initializing...");
-        _delay_ms(1000); // 1秒間表示
+        lcd_debug_message("Initializing...");
     
         i2c_init(); // I2C初期化
-        i2c_scan();
+        //i2c_scan();
         if (!aht25_init()) { // AHT25センサー初期化
-            lcd_clear();
-            lcd_set_cursor(0, 0);
-            lcd_putstr("AHT25 Init Fail!");
+            lcd_debug_message("AHT25 Init Fail!");
             while(1); // 初期化失敗で停止
         } else {
             lcd_debug_message("AHT25 Ready!");
@@ -70,6 +66,7 @@ int main(void) {
     float humidity = 0.0;
     uint8_t raw_sensor_data[7]; // 生の7バイトデータを格納
     
+    lcd_clear();
     while(1) {
       if (aht25_read_data(&temperature, &humidity, raw_sensor_data)) {
           // 温度を表示
