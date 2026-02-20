@@ -7,7 +7,7 @@ PORT = /dev/ttyUSB0
 
 # ファイル名
 TARGET = main
-SRCS = main.c lcd.c i2c.c aht25.c
+SRCS = main.c lcd.c i2c.c aht25.c servo.c
 
 # コンパイルオプション
 CC = avr-gcc

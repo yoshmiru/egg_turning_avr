@@ -1,41 +1,18 @@
 #include "lcd.h"
-#include "aht25.h" // AHT25センサー用
-#include "i2c.h"   // I2C関数用
-#include <stdio.h> // sprintf を使うため
-#include <util/delay.h> // _delay_ms を使うため
-
-void i2c_scan(void) {
-    char buf[16];
-    lcd_clear();
-    lcd_putstr("I2C Scanning...");
-    _delay_ms(1000);
-
-    for (uint8_t addr = 1; addr < 127; addr++) {
-        if (i2c_start()) {
-            // 書き込みモードでアドレスを投げ、ACKが返るか確認
-            if (i2c_write(addr << 1 | 0)) {
-                // 返事があった！
-                lcd_clear();
-                sprintf(buf, "Found: 0x%02X", addr);
-                lcd_putstr(buf);
-                i2c_stop();
-                _delay_ms(2000); // 確認のために2秒止める
-            } else {
-                i2c_stop();
-            }
-        }
-        _delay_us(100); // 連続呼び出しによるセンサーのフリーズ防止
-    }
-    lcd_clear();
-    lcd_debug_message("Scan Finished");
-}
+#include "aht25.h"
+#include "i2c.h"
+#include "servo.h"
+#include <stdio.h>
+#include <util/delay.h>
 
 // 温度表示関数
 void display_temp(float temp) {
     char buffer[16];
     int whole = (int)temp;
     int fraction = (int)((temp - whole) * 10);
-    sprintf(buffer, "T %d.%d C   ", whole, fraction);
+    if (temp < 0 && fraction < 0) fraction = -fraction;
+    sprintf(buffer, "Temp: %d.%d C   ", whole, fraction);
+    lcd_set_cursor(0, 1);
     lcd_putstr(buffer);
 }
 
@@ -44,48 +21,70 @@ void display_humidity(float humidity) {
     char buffer[16];
     int whole = (int)humidity;
     int fraction = (int)((humidity - whole) * 10);
-    sprintf(buffer, "H %d.%d %%   ", whole, fraction);
+    sprintf(buffer, "Humi: %d.%d %%   ", whole, fraction);
+    lcd_set_cursor(0, 1);
     lcd_putstr(buffer);
 }
 
 int main(void) {
     lcd_init();
-        lcd_debug_message("Initializing...");
+    i2c_init();
+    servo_init();
     
-        i2c_init(); // I2C初期化
-        //i2c_scan();
-        if (!aht25_init()) { // AHT25センサー初期化
-            lcd_debug_message("AHT25 Init Fail!");
-            while(1); // 初期化失敗で停止
-        } else {
-            lcd_debug_message("AHT25 Ready!");
-            _delay_ms(1000); // 1秒間表示
-        }
-    
+    // ボタン PD6 を入力に設定し、プルアップ有効
+    DDRD &= ~(1 << PD6);
+    PORTD |= (1 << PD6);
+
+    lcd_set_cursor(0, 0);
+    lcd_putstr("Initializing...");
+    _delay_ms(1000);
+
+    if (!aht25_init()) {
+        lcd_clear();
+        lcd_set_cursor(0, 0);
+        lcd_putstr("AHT25 Init Fail!");
+        // 初期化失敗してもボタン操作は試せるように while(1) は避けるか、エラー表示のまま進む
+    }
+
     float temperature = 0.0;
     float humidity = 0.0;
-    uint8_t raw_sensor_data[7]; // 生の7バイトデータを格納
-    
-    lcd_clear();
+    uint8_t angle_state = 0; // 0: 0度, 1: 30度, 2: 60度
+    uint16_t loop_cnt = 0;
+
     while(1) {
-      if (aht25_read_data(&temperature, &humidity, raw_sensor_data)) {
-          // 温度を表示
-          lcd_set_cursor(0, 0); // 次の表示のためにカーソルをセット
-          display_temp(temperature);
-          // 湿度を表示
-          lcd_set_cursor(0, 1); // 次の表示のためにカーソルをセット
-          display_humidity(humidity);
-      } else {
-          _delay_ms(1000); // 連続呼び出しによるセンサーのフリーズ防止
-          // raw_sensor_dataの内容を16進数で表示
-          char error_buf[16];
-          lcd_set_cursor(0, 0);
-          sprintf(error_buf, "%02X %02X %02X %02X", raw_sensor_data[0], raw_sensor_data[1], raw_sensor_data[2], raw_sensor_data[3]);
-          lcd_putstr(error_buf);
-          sprintf(error_buf, "%02X %02X %02X", raw_sensor_data[4], raw_sensor_data[5], raw_sensor_data[6]);
-          lcd_set_cursor(0, 1);
-          lcd_putstr(error_buf);
-      }
-      _delay_ms(2000); // メッセージを2秒間表示
+        // 1. ボタン入力チェック (約10msごとにチェック)
+        if (!(PIND & (1 << PD6))) {
+            _delay_ms(20); // チャタリング防止
+            if (!(PIND & (1 << PD6))) {
+                angle_state = (angle_state + 1) % 3;
+                if (angle_state == 0) servo_set_angle(0);
+                else if (angle_state == 1) servo_set_angle(30);
+                else if (angle_state == 2) servo_set_angle(60);
+                
+                // ボタンが離されるまで待機
+                while (!(PIND & (1 << PD6)));
+                _delay_ms(20);
+            }
+        }
+
+        // 2. 温湿度表示の更新 (約2秒ごとに切り替え)
+        if (loop_cnt == 0) {
+            lcd_set_cursor(0, 0);
+            lcd_putstr("Hatchery System");
+            if (aht25_read_data(&temperature, &humidity, NULL)) {
+                display_temp(temperature);
+            } else {
+                lcd_set_cursor(0, 1);
+                lcd_putstr("Sensor Error!   ");
+            }
+        } else if (loop_cnt == 200) { // 10ms * 200 = 2s
+            if (aht25_read_data(&temperature, &humidity, NULL)) {
+                display_humidity(humidity);
+            }
+        }
+
+        _delay_ms(10);
+        loop_cnt++;
+        if (loop_cnt >= 400) loop_cnt = 0; // 4秒周期でループ
     }
 }
