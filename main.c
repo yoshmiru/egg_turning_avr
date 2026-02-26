@@ -17,7 +17,7 @@
 
 // 転卵設定 (振り子式)
 #define TURN_ANGLE_LEFT  0        // 左端の角度 (度)
-#define TURN_ANGLE_RIGHT 110       // 右端の角度 (度)
+#define TURN_ANGLE_RIGHT 120       // 右端の角度 (度)
 #define TURN_INTERVAL_SEC 7200UL  // 転卵間隔 (2時間)
 
 // システム周期
