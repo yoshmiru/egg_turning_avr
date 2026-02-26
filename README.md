@@ -9,7 +9,61 @@ ATmega8 マイコンを使用した、高精度な温度管理と自動転卵機
 - **リアルタイム・モニタリング**: LCD（16x2）に温度、湿度、ヒーター出力、次回の転卵までの残り時間を表示します。
 - **安全機能**: AHT25センサーの異常を検知した際、ヒーターを強制停止する保護機能を備えています。
 
+## 回路接続図 (Mermaid)
+
+```mermaid
+graph TD
+    subgraph ATmega8_MCU
+        RESET[1: RESET]
+        PD0[2: PD0/RS]
+        PD1[3: PD1/EN]
+        PD2[4: PD2/D4]
+        PD3[5: PD3/D5]
+        PD4[6: PD4/D6]
+        PD5[11: PD5/D7]
+        PD6[12: PD6/Button]
+        PD7[13: PD7/SSR]
+        PB1[15: PB1/Servo]
+        PC4[27: PC4/SDA]
+        PC5[28: PC5/SCL]
+    end
+
+    subgraph LCD_16x2
+        LCD_RS[RS]
+        LCD_EN[EN]
+        LCD_D4[D4]
+        LCD_D5[D5]
+        LCD_D6[D6]
+        LCD_D7[D7]
+    end
+
+    subgraph Sensors_and_Output
+        AHT25[AHT25 Sensor]
+        SERVO[Servo Motor]
+        SSR[SSR - Heater]
+        BTN[Push Button]
+    end
+
+    %% Connections
+    PD0 --> LCD_RS
+    PD1 --> LCD_EN
+    PD2 --> LCD_D4
+    PD3 --> LCD_D5
+    PD4 --> LCD_D6
+    PD5 --> LCD_D7
+
+    PD6 --> BTN
+    PD7 --> SSR
+    PB1 --> SERVO
+
+    PC4 -- I2C SDA --- AHT25
+    PC5 -- I2C SCL --- AHT25
+
+    RESET -- 10k Pullup --- VCC
+```
+
 ## ハードウェア構成 (ATmega8)
+
 
 | ピン | 接続先 | 用途 |
 | :--- | :--- | :--- |
